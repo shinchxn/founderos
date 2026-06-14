@@ -1,5 +1,5 @@
 import { db } from "../../lib/db";
-import { kpis, deals, tasks, alerts, agent_hours_saved, agent_runs, workspaces } from "../../lib/db/schema";
+import { kpis, deals, tasks, alerts, agent_hours_saved, agent_runs, workspaces, contacts, meetings } from "../../lib/db/schema";
 import { eq, sum, and, notInArray, not, desc } from "drizzle-orm";
 import { auth } from "@/auth";
 import { redirect } from "next/navigation";
@@ -96,9 +96,21 @@ export default async function DashboardPage() {
     limit: 10
   });
 
+  const hasContacts = !!(await db.query.contacts.findFirst({ where: eq(contacts.workspace_id, workspaceId) }));
+  const hasMeetings = !!(await db.query.meetings.findFirst({ where: eq(meetings.workspace_id, workspaceId) }));
+  const hasKpis = kpiDataList.length > 0;
+  const hasDeals = activeDealsCount > 0;
+
+  let setupStepsCompleted = 1; // 1 for workspace setup
+  if (hasKpis) setupStepsCompleted++;
+  if (hasContacts || hasDeals) setupStepsCompleted++;
+  if (hasMeetings) setupStepsCompleted++;
+
+  const setupPercentage = Math.round((setupStepsCompleted / 5) * 100);
+
   return (
     <>
-      <ClientRefresher intervalMs={15000} />
+      <ClientRefresher intervalMs={60000} />
       <div className="mb-8">
         <h2 className="text-2xl font-bold tracking-tight text-primary mb-1">Dashboard</h2>
         <p className="text-sm text-muted">Good morning, {session.user.name?.split(' ')[0] || 'Founder'}. Startup Command Dashboard.</p>
@@ -156,30 +168,29 @@ export default async function DashboardPage() {
           <div className="bg-[#111820] border border-[#1a2332] rounded-md p-5">
             <div className="flex justify-between items-center mb-5">
               <h3 className="font-semibold text-primary">Setup Progress</h3>
-              <span className="text-sm text-muted">40% Completed</span>
+              <span className="text-sm text-muted">{setupPercentage}% Completed</span>
             </div>
             <div className="flex items-center justify-between w-full relative">
               <div className="absolute left-0 top-1/2 -translate-y-1/2 w-full h-[2px] bg-[#1a2332] z-0"></div>
-              <div className="absolute left-0 top-1/2 -translate-y-1/2 w-[40%] h-[2px] bg-[#0ea5e9] z-0"></div>
+              <div className="absolute left-0 top-1/2 -translate-y-1/2 h-[2px] bg-[#0ea5e9] z-0 transition-all duration-500" style={{ width: `${setupPercentage}%` }}></div>
               
               <Link href="/dashboard/settings" className="flex flex-col items-center gap-2 z-10 bg-[#111820] px-2 text-center group">
-                <div className="w-6 h-6 rounded-full bg-[#0ea5e9] text-white flex items-center justify-center group-hover:scale-110 transition-transform cursor-pointer">
-                  <Check className="w-3 h-3" />
+                <div className={`w-6 h-6 rounded-full ${hasKpis ? 'bg-[#0ea5e9] text-white' : 'bg-[#1a2332] border border-[#272a30] text-muted'} flex items-center justify-center group-hover:scale-110 transition-transform cursor-pointer`}>
+                  {hasKpis ? <Check className="w-3 h-3" /> : <span className="text-xs font-bold">1</span>}
                 </div>
-                <span className="text-[11px] font-bold tracking-wider uppercase text-primary group-hover:text-[#0ea5e9] transition-colors">Bank</span>
+                <span className={`text-[11px] font-bold tracking-wider uppercase ${hasKpis ? 'text-primary' : 'text-muted'} group-hover:text-[#0ea5e9] transition-colors`}>Bank</span>
               </Link>
               <Link href="/dashboard/crm" className="flex flex-col items-center gap-2 z-10 bg-[#111820] px-2 text-center group">
-                <div className="w-6 h-6 rounded-full bg-[#0ea5e9] text-white flex items-center justify-center group-hover:scale-110 transition-transform cursor-pointer">
-                  <Check className="w-3 h-3" />
+                <div className={`w-6 h-6 rounded-full ${(hasContacts || hasDeals) ? 'bg-[#0ea5e9] text-white' : 'bg-[#1a2332] border border-[#272a30] text-muted'} flex items-center justify-center group-hover:scale-110 transition-transform cursor-pointer`}>
+                  {(hasContacts || hasDeals) ? <Check className="w-3 h-3" /> : <span className="text-xs font-bold">2</span>}
                 </div>
-                <span className="text-[11px] font-bold tracking-wider uppercase text-primary group-hover:text-[#0ea5e9] transition-colors">CRM</span>
+                <span className={`text-[11px] font-bold tracking-wider uppercase ${(hasContacts || hasDeals) ? 'text-primary' : 'text-muted'} group-hover:text-[#0ea5e9] transition-colors`}>CRM</span>
               </Link>
               <Link href="/dashboard/meetings" className="flex flex-col items-center gap-2 z-10 bg-[#111820] px-2 text-center group">
-                <div className="w-6 h-6 rounded-full bg-[#1a2332] border border-[#0ea5e9] flex items-center justify-center relative group-hover:scale-110 transition-transform cursor-pointer">
-                  <div className="absolute -inset-1.5 rounded-full bg-[#0ea5e9]/20 animate-pulse"></div>
-                  <div className="w-2 h-2 rounded-full bg-[#0ea5e9]"></div>
+                <div className={`w-6 h-6 rounded-full ${hasMeetings ? 'bg-[#0ea5e9] text-white' : 'bg-[#1a2332] border border-[#272a30] text-muted'} flex items-center justify-center group-hover:scale-110 transition-transform cursor-pointer`}>
+                  {hasMeetings ? <Check className="w-3 h-3" /> : <span className="text-xs font-bold">3</span>}
                 </div>
-                <span className="text-[11px] font-bold tracking-wider uppercase text-[#0ea5e9]">Notes</span>
+                <span className={`text-[11px] font-bold tracking-wider uppercase ${hasMeetings ? 'text-primary' : 'text-muted'} group-hover:text-[#0ea5e9] transition-colors`}>Notes</span>
               </Link>
               <Link href="/dashboard/settings" className="flex flex-col items-center gap-2 z-10 bg-[#111820] px-2 text-center group">
                 <div className="w-6 h-6 rounded-full bg-[#1a2332] border border-[#272a30] text-muted text-xs font-bold flex items-center justify-center group-hover:border-[#0ea5e9] group-hover:text-[#0ea5e9] transition-colors cursor-pointer">

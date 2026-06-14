@@ -4,6 +4,8 @@ import { Download } from "lucide-react";
 import { db } from "@/lib/db";
 import { kpis, workspaces } from "@/lib/db/schema";
 import { eq } from "drizzle-orm";
+import { KPIActions } from "./KPIActions";
+import { KPIChart } from "./KPIChart";
 
 export const dynamic = "force-dynamic";
 
@@ -31,10 +33,9 @@ export default async function KPIsPage() {
   const mrr = currentKpi?.mrr || 0;
   const mrrTrend = (mrr && previousKpi?.mrr) ? ((mrr - previousKpi.mrr) / previousKpi.mrr) * 100 : 0;
 
-  // We don't have CAC or Burn Rate in DB directly, but we can display N/A or derive them
-  // For now, if there's no data, show $0 or --
-  const burnRate = mrr ? mrr * 1.2 : 0; // Just as an example, showing burn is slightly higher than MRR
-  const burnTrend = (burnRate && previousKpi?.mrr) ? (((mrr * 1.2) - (previousKpi.mrr * 1.2)) / (previousKpi.mrr * 1.2)) * 100 : 0;
+  // Estimated expenses based on MRR
+  const estExpenses = mrr ? mrr * 1.2 : 0;
+  const burnTrend = (estExpenses && previousKpi?.mrr) ? (((mrr * 1.2) - (previousKpi.mrr * 1.2)) / (previousKpi.mrr * 1.2)) * 100 : 0;
 
   const hasData = kpiDataList.length > 0;
 
@@ -88,12 +89,12 @@ export default async function KPIsPage() {
           </div>
         </div>
 
-        {/* Burn Rate Card (Amber Warning) */}
-        <div className={`bg-[#111820] border ${hasData && burnRate > mrr ? 'border-[#ef4444]/30' : 'border-[#1a2332]'} rounded-md p-4 hover:bg-[#1a2332]/50 transition-colors relative overflow-hidden`}>
-          {hasData && burnRate > mrr && <div className="absolute inset-0 bg-gradient-to-t from-[#ef4444]/10 to-transparent pointer-events-none"></div>}
+        {/* Estimated Expenses Card */}
+        <div className={`bg-[#111820] border ${hasData && estExpenses > mrr ? 'border-[#ef4444]/30' : 'border-[#1a2332]'} rounded-md p-4 hover:bg-[#1a2332]/50 transition-colors relative overflow-hidden`}>
+          {hasData && estExpenses > mrr && <div className="absolute inset-0 bg-gradient-to-t from-[#ef4444]/10 to-transparent pointer-events-none"></div>}
           <div className="flex justify-between items-start mb-2 relative z-10">
-            <span className="text-[11px] font-bold tracking-wider uppercase text-muted flex items-center gap-1">
-              Estimated Burn
+            <span className="text-[11px] font-bold tracking-wider uppercase text-muted flex items-center gap-1" title="~MRR × 1.2">
+              Est. Expenses
             </span>
             {hasData && (
               <div className={`px-2 py-0.5 rounded font-mono text-[11px] font-medium ${burnTrend <= 0 ? 'bg-[#10b981]/10 text-[#10b981]' : 'bg-[#ef4444]/10 text-[#ef4444]'}`}>
@@ -101,7 +102,7 @@ export default async function KPIsPage() {
               </div>
             )}
           </div>
-          <div className={`text-2xl font-mono font-medium ${hasData && burnRate > mrr ? 'text-[#ef4444]' : 'text-primary'} mb-4 relative z-10`}>${burnRate.toLocaleString()}</div>
+          <div className={`text-2xl font-mono font-medium ${hasData && estExpenses > mrr ? 'text-[#ef4444]' : 'text-primary'} mb-4 relative z-10`}>${estExpenses.toLocaleString()}</div>
           <div className="h-8 w-full relative z-10 flex items-end">
              {hasData ? (
                <div className="w-full h-full border-b-2 border-[#ef4444]/50"></div>
@@ -130,39 +131,14 @@ export default async function KPIsPage() {
         
         {/* Dynamic Chart Area */}
         <div className="h-64 w-full relative border-l border-b border-[#1a2332] flex items-end justify-center">
-          {!hasData ? (
-            <div className="text-muted text-sm mb-10 italic">No trend data available. Click "GENERATE DEMO DATA" to populate.</div>
-          ) : (
-            <div className="absolute inset-0 flex justify-between items-end px-2 z-10 w-full pt-4">
-              {/* Simple dynamically sized bars based on data */}
-              {kpiDataList.slice().reverse().map((kpi, i) => {
-                // Normalize height based on max MRR/Signups
-                const maxSignups = Math.max(...kpiDataList.map(k => k.new_signups), 1);
-                const heightPct = Math.max((kpi.new_signups / maxSignups) * 100, 5);
-                return (
-                  <div key={kpi.id} className="w-[6%] bg-[#8b5cf6]/50 hover:bg-[#8b5cf6] transition-colors" style={{ height: `${heightPct}%` }}></div>
-                );
-              })}
-            </div>
-          )}
-        </div>
-        <div className="flex justify-between mt-2 font-mono text-[10px] text-muted">
-          {hasData ? (
-             kpiDataList.slice().reverse().map((kpi) => (
-                <span key={kpi.id}>{new Date(kpi.week_start).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}</span>
-             ))
-          ) : (
-            <span>--</span>
-          )}
+          <KPIChart kpiDataList={kpiDataList} />
         </div>
       </div>
 
       <div className="bg-[#111820] border border-[#1a2332] rounded-md flex-1 flex flex-col overflow-hidden">
         <div className="px-5 py-4 border-b border-[#1a2332] flex justify-between items-center bg-[#080b10]">
           <h3 className="font-semibold text-primary">KPI History Log</h3>
-          <button className="text-[10px] font-bold tracking-wider uppercase text-muted hover:text-primary transition-colors flex items-center gap-1 cursor-pointer">
-            <Download className="w-3 h-3" /> EXPORT CSV
-          </button>
+          <KPIActions kpiDataList={kpiDataList} />
         </div>
         <div className="flex-1 overflow-x-auto">
           <table className="w-full text-left">
@@ -171,7 +147,7 @@ export default async function KPIsPage() {
                 <th className="px-5 py-3 text-[10px] font-bold text-muted uppercase tracking-wider w-32">Week</th>
                 <th className="px-5 py-3 text-[10px] font-bold text-muted uppercase tracking-wider">MRR</th>
                 <th className="px-5 py-3 text-[10px] font-bold text-muted uppercase tracking-wider">Signups</th>
-                <th className="px-5 py-3 text-[10px] font-bold text-muted uppercase tracking-wider text-right">Burn</th>
+                <th className="px-5 py-3 text-[10px] font-bold text-muted uppercase tracking-wider text-right">Est. Expenses</th>
               </tr>
             </thead>
             <tbody className="text-sm font-mono font-medium">

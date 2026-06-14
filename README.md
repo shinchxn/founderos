@@ -8,9 +8,9 @@
 
 *Stop managing tools. Start building your company.*
 
-[![Next.js](https://img.shields.io/badge/Next.js_14-000000?style=flat-square&logo=nextdotjs&logoColor=white)](https://nextjs.org)
+[![Next.js](https://img.shields.io/badge/Next.js_15-000000?style=flat-square&logo=nextdotjs&logoColor=white)](https://nextjs.org)
 [![TypeScript](https://img.shields.io/badge/TypeScript-3178C6?style=flat-square&logo=typescript&logoColor=white)](https://typescriptlang.org)
-[![Tailwind CSS](https://img.shields.io/badge/Tailwind_CSS-06B6D4?style=flat-square&logo=tailwindcss&logoColor=white)](https://tailwindcss.com)
+[![Drizzle ORM](https://img.shields.io/badge/Drizzle_ORM-C5F74F?style=flat-square&logo=drizzle&logoColor=black)](https://orm.drizzle.team)
 [![Vercel](https://img.shields.io/badge/Vercel-000000?style=flat-square&logo=vercel&logoColor=white)](https://vercel.com)
 
 [![AWS Aurora](https://img.shields.io/badge/Aurora_PostgreSQL-FF9900?style=flat-square&logo=amazonaws&logoColor=white)](https://aws.amazon.com/rds/aurora)
@@ -20,10 +20,6 @@
 
 [![H0 Hackathon](https://img.shields.io/badge/H0_Hackathon-Track_2_B2B-8b5cf6?style=flat-square)](https://hack.devpost.com)
 [![License](https://img.shields.io/badge/License-MIT-22d3a5?style=flat-square)](LICENSE)
-
-<br/>
-<img src="https://placehold.co/1200x675/080b10/ffffff?text=FounderOS+Platform+Screenshot+(Hero)" alt="FounderOS Hero Screenshot" width="100%" style="border-radius: 12px; margin-top: 24px;"/>
-<br/>
 
 </div>
 
@@ -52,6 +48,8 @@ FounderOS replaces 15 disconnected tools with one AI-native workspace. Four auto
 | 💰 **Sales Digest** | Weekly cron | Scores every deal by priority, generates 3 high-priority follow-up tasks |
 | ✉️ **Investor Update** | Friday cron | Drafts weekly investor email, sends via AWS SES in one click |
 
+All agents write a human-readable `output_summary` visible in the Agent Activity feed, and wrap AWS Bedrock calls with automatic retries (`p-retry`) for resilience.
+
 ---
 
 ## AWS Architecture
@@ -61,25 +59,25 @@ FounderOS replaces 15 disconnected tools with one AI-native workspace. Four auto
 │                    Founder Browser                       │
 └────────────────────────┬────────────────────────────────┘
                          │ HTTPS
-                         ┌────────────────────────▼────────────────────────────────┐
-                         │              Next.js 14 on Vercel                        │
-                         │         App Router · API Routes · Server Actions         │
-                         └───┬──────────┬──────────┬──────────┬────────────────────┘
-                             │          │          │          │
-                                 ▼          ▼          ▼          ▼
-                                 ┌───────┐ ┌───────┐ ┌───────┐ ┌──────────┐
-                                 │Aurora │ │Bedrock│ │  S3   │ │   SES    │
-                                 │  PG   │ │Claude │ │Files  │ │  Email   │
-                                 │  v2   │ │Sonnet │ │       │ │Delivery  │
-                                 └───────┘ └───────┘ └───────┘ └──────────┘
-                                     ▲
-                                         │ SQL (pg + SSL)
-                                             │
-                                             ┌───┴──────────────────────────────────────────────────────┐
-                                             │                 Vercel Cron Jobs                          │
-                                             │   /api/cron/agents  (daily 08:00 UTC)                    │
-                                             │   /api/cron/meetings (every 5 minutes)                   │
-                                             └──────────────────────────────────────────────────────────┘
+┌────────────────────────▼────────────────────────────────┐
+│              Next.js 15 on Vercel                        │
+│         App Router · API Routes · Server Actions         │
+└───┬──────────┬──────────┬──────────┬────────────────────┘
+    │          │          │          │
+    ▼          ▼          ▼          ▼
+┌───────┐ ┌───────┐ ┌───────┐ ┌──────────┐
+│Aurora │ │Bedrock│ │  S3   │ │   SES    │
+│  PG   │ │Claude │ │Files  │ │  Email   │
+│  v2   │ │Sonnet │ │       │ │Delivery  │
+└───────┘ └───────┘ └───────┘ └──────────┘
+    ▲
+    │ SQL (Drizzle ORM + SSL)
+    │
+┌───┴──────────────────────────────────────────────────────┐
+│                 Vercel Cron Jobs                          │
+│   /api/cron/agents  (daily 08:00 UTC, p-limit concurrency)│
+│   /api/cron/meetings (every 5 minutes)                   │
+└──────────────────────────────────────────────────────────┘
 ```
 
 ---
@@ -88,7 +86,7 @@ FounderOS replaces 15 disconnected tools with one AI-native workspace. Four auto
 
 | Service | Purpose | SDK |
 |---|---|---|
-| **Aurora PostgreSQL Serverless v2** | Primary database — 11 relational tables | `pg` npm package |
+| **Aurora PostgreSQL Serverless v2** | Primary database — 11 relational tables | Drizzle ORM + `pg` |
 | **AWS Bedrock Claude Sonnet** | Primary AI for all 4 agents | `@aws-sdk/client-bedrock-runtime` |
 | **AWS Bedrock Claude Haiku** | Fast structured meeting extraction | `@aws-sdk/client-bedrock-runtime` |
 | **Amazon S3** | Meeting note file storage | `@aws-sdk/client-s3` |
@@ -99,15 +97,16 @@ FounderOS replaces 15 disconnected tools with one AI-native workspace. Four auto
 ## Full Tech Stack
 
 ```
-Frontend      Next.js 14 App Router · TypeScript · Tailwind CSS · shadcn/ui · Recharts
-Backend       Next.js API Routes · Server Actions · Vercel Serverless Functions
-Database      Aurora PostgreSQL Serverless v2 (AWS RDS)
-AI Primary    AWS Bedrock — claude-sonnet-4-5 · claude-haiku-20240307
-AI Fallback   OpenAI GPT-4o-mini (silent fallback if Bedrock unavailable)
+Frontend      Next.js 15 App Router · TypeScript · Vanilla CSS · Recharts · @dnd-kit
+Backend       Next.js API Routes · Zod validation · Drizzle ORM · Vercel Serverless
+Database      Aurora PostgreSQL Serverless v2 (AWS RDS) via Drizzle ORM
+AI            AWS Bedrock — claude-sonnet-4-5 · claude-haiku-20240307 (p-retry resilience)
 Storage       Amazon S3
 Email         AWS SES
 Auth          NextAuth · Google OAuth
 Payments      Stripe Subscriptions
+Reliability   p-retry (Bedrock), p-limit (cron concurrency), sonner (toast notifications)
+Analytics     Vercel Analytics
 Deployment    Vercel · Vercel Cron Jobs
 ```
 
@@ -116,30 +115,29 @@ Deployment    Vercel · Vercel Cron Jobs
 ## Features
 
 ### Unified Dashboard
-![Dashboard View](https://placehold.co/1000x500/090d1a/ffffff?text=Dashboard+Screenshot)
 - MRR, active deals, open tasks, runway with WoW trend indicators
 - **ROI Dashboard** — Live hours-saved counter showing cumulative time automated per agent
-- **Setup Progress** — Guided onboarding that works with real founder data from minute one
+- **Setup Progress** — Dynamic onboarding bar that reflects real DB data (KPIs, contacts, deals, meetings)
+- **Agent Activity Feed** — Shows meaningful summaries per run (e.g. *"Detected 3 anomaly alerts"*, *"Scored 8 deals, generated 3 follow-up tasks"*)
 
 ### CRM and Pipeline
-![CRM and Pipeline View](https://placehold.co/1000x500/090d1a/ffffff?text=CRM+%26+Pipeline+Screenshot)
-- Contact management, deal staleness indicators, AI-scored kanban board
+- Drag-and-drop Kanban board powered by `@dnd-kit` — move deals between stages with optimistic UI updates persisted to the database
+- Contact management, deal staleness indicators, AI-scored priority cards
+- Real-time `sonner` toast notifications on deal and contact creation
 
 ### Financial KPIs
-![Financial KPIs View](https://placehold.co/1000x500/090d1a/ffffff?text=Financial+KPIs+Screenshot)
-- Weekly metric tracking with anomaly markers on the trend chart
+- Weekly metric tracking with interactive dual-line `recharts` chart (MRR + Signups)
+- Anomaly alert markers, estimated expenses card, **Export CSV** button
 
 ### Meeting Vault
-![Meeting Vault View](https://placehold.co/1000x500/090d1a/ffffff?text=Meeting+Vault+Screenshot)
 - Upload notes, extract structure with AI, view full prompt and response audit trail
+- Robust JSON parsing that handles Claude markdown-wrapped responses
 
 ### Investor Updates
-![Investor Updates View](https://placehold.co/1000x500/090d1a/ffffff?text=Investor+Updates+Screenshot)
-- AI-drafted, editable, sent via AWS SES, exportable as PDF
+- AI-drafted, editable, sent via AWS SES in one click, exportable as PDF
 
 ### Agent Hub
-![Agent Hub View](https://placehold.co/1000x500/090d1a/ffffff?text=Agent+Hub+Screenshot)
-- Full audit trail: every agent run, exact prompt sent, raw AI response, hours saved
+- Full audit trail: every agent run, exact prompt sent, raw AI response, hours saved, meaningful output summary
 
 ---
 
@@ -149,6 +147,7 @@ Deployment    Vercel · Vercel Cron Jobs
 |---|---|---|---|---|---|
 | CRM | ✅ | Limited | ✅ | ❌ | Limited |
 | Task Management | ✅ | ✅ | Basic | ✅ | ✅ |
+| **Drag-and-Drop Kanban** | ✅ | Partial | ✅ | ✅ | ✅ |
 | Meeting AI Extraction | ✅ | Partial | Partial | Partial | Partial |
 | Startup KPI Dashboard | ✅ | Needs setup | Needs setup | ❌ | Needs setup |
 | **Investor Updates** | ✅ | ❌ | ❌ | ❌ | ❌ |
@@ -201,9 +200,6 @@ AWS_S3_BUCKET_NAME=
 AWS_BEDROCK_REGION=us-east-1
 AWS_SES_FROM_EMAIL=
 
-# AI Fallback
-OPENAI_API_KEY=
-
 # Stripe
 STRIPE_SECRET_KEY=
 STRIPE_PRICE_ID_PRO=
@@ -217,7 +213,7 @@ CRON_SECRET=
 ### 3. Run the database schema
 
 ```bash
-psql $DATABASE_URL -f db/schema.sql
+npx drizzle-kit push
 ```
 
 ### 4. Start dev server
@@ -263,32 +259,36 @@ founderos/
 │   │   ├── login/              # Google OAuth sign in
 │   │   └── onboarding/         # Workspace setup
 │   ├── (dashboard)/
-│   │   ├── page.tsx            # Main dashboard
-│   │   ├── crm/                # CRM and pipeline kanban
+│   │   ├── page.tsx            # Main dashboard (dynamic setup progress)
+│   │   ├── ClientRefresher.tsx # Focus-aware polling (60s interval)
+│   │   ├── crm/                # CRM pipeline — drag-and-drop Kanban (@dnd-kit)
 │   │   ├── tasks/              # Task management
-│   │   ├── kpis/               # Financial KPIs + anomaly chart
+│   │   ├── kpis/               # Financial KPIs + Recharts trend chart + CSV export
 │   │   ├── meetings/           # Meeting notes + AI extraction
 │   │   ├── investor-updates/   # AI drafting + SES delivery
 │   │   ├── agents/             # Agent Hub + audit trail
 │   │   └── settings/           # Workspace + billing + SES
 │   └── api/
 │       ├── auth/               # NextAuth handlers
-│       ├── workspaces/         # All workspace API routes
-│       ├── cron/               # Vercel cron job routes
+│       ├── deals/              # Zod-validated deal CRUD
+│       ├── contacts/           # Zod-validated contact CRUD
+│       ├── meetings/           # Zod-validated meeting CRUD
+│       ├── cron/               # Vercel cron jobs (p-limit concurrency)
 │       └── webhooks/           # Stripe webhook
 ├── lib/
 │   ├── agents/
-│   │   ├── meeting-agent.ts        # Meeting Intelligence Agent
+│   │   ├── meeting-agent.ts         # Meeting Intelligence Agent
 │   │   ├── investor-update-agent.ts # Investor Update Agent
-│   │   ├── anomaly-agent.ts         # Revenue Anomaly Agent
-│   │   └── sales-digest-agent.ts    # Sales Digest Agent
-│   ├── db.ts                   # Aurora PostgreSQL client
-│   ├── bedrock.ts              # AWS Bedrock client
+│   │   ├── anomaly-agent.ts         # Revenue Anomaly Agent (7-day dedup window)
+│   │   └── sales-digest-agent.ts    # Sales Digest Agent (fixed task limiter)
+│   ├── db/
+│   │   └── schema.ts           # Drizzle ORM schema (11 tables)
+│   ├── bedrock.ts              # AWS Bedrock client (p-retry resilience)
 │   ├── s3.ts                   # Amazon S3 client
 │   ├── ses.ts                  # AWS SES client
 │   └── auth.ts                 # NextAuth config
-├── db/
-│   └── schema.sql              # Aurora PostgreSQL schema (11 tables)
+├── types/
+│   └── index.ts                # Strict TypeScript types (Drizzle inferred + custom)
 └── vercel.json                 # Cron job schedules
 ```
 
@@ -344,4 +344,3 @@ Built for the **H0 Hackathon** · AWS Databases + Vercel · June 2026
 [![Vercel](https://img.shields.io/badge/Deployed_on-Vercel-000000?style=flat-square&logo=vercel&logoColor=white)](https://vercel.com)
 
 </div>
-# founderos

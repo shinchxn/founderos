@@ -103,10 +103,12 @@ export async function processAnomalies(workspaceId: string) {
       if (['won', 'lost'].includes(deal.stage)) continue;
       
       const title = `Cold Deal: ${deal.title}`;
+      const sevenDaysAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
       const existing = await db.query.alerts.findFirst({
         where: and(
           eq(alerts.workspace_id, workspaceId),
-          eq(alerts.title, title)
+          eq(alerts.title, title),
+          gte(alerts.created_at, sevenDaysAgo)
         )
       });
 
@@ -137,6 +139,7 @@ export async function processAnomalies(workspaceId: string) {
       status: "completed",
       duration_ms: Date.now() - startTime,
       items_processed: alertsCreated,
+      output_summary: `Detected ${alertsCreated} anomaly alerts.`,
       completed_at: new Date(),
     }).where(eq(agent_runs.id, runId));
 

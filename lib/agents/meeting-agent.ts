@@ -38,7 +38,14 @@ Return exactly this JSON structure:
 
   try {
     const responseText = await invokeClaudeHaiku(prompt, 2048);
-    const data = JSON.parse(responseText);
+    let data;
+    try {
+      data = JSON.parse(responseText);
+    } catch {
+      // Strip markdown code blocks Claude sometimes adds
+      const cleaned = responseText.replace(/```json\n?|```/g, '').trim();
+      data = JSON.parse(cleaned);
+    }
 
     await db.update(meetings).set({
       processed: true,
@@ -89,6 +96,7 @@ Return exactly this JSON structure:
       raw_ai_response: responseText,
       duration_ms: Date.now() - startTime,
       items_processed: (data.action_items?.length || 0) + (data.risks?.length || 0) + (data.decisions?.length || 0),
+      output_summary: `Extracted ${data.action_items?.length || 0} tasks from "${meeting.title}".`,
       completed_at: new Date(),
     }).where(eq(agent_runs.id, runId));
 

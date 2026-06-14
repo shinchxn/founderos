@@ -4,6 +4,12 @@ import { deals, workspaces } from "@/lib/db/schema";
 import { eq, desc } from "drizzle-orm";
 import { NextResponse } from "next/server";
 import crypto from "crypto";
+import { createInsertSchema } from "drizzle-zod";
+import { z } from "zod";
+
+const insertDealSchema = createInsertSchema(deals, {
+  expected_close_date: z.coerce.date().optional().nullable(),
+}).omit({ id: true, workspace_id: true, created_at: true, updated_at: true });
 
 export async function GET() {
   const session = await auth();
@@ -46,12 +52,14 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: "Workspace not found" }, { status: 404 });
     }
 
-    const body = await req.json();
-    const { title, value, stage, probability, notes, contact_id, expected_close_date } = body;
+    const rawBody = await req.json();
+    const body = insertDealSchema.safeParse(rawBody);
 
-    if (!title || value === undefined || !stage) {
-      return NextResponse.json({ error: "Missing required fields: title, value, stage" }, { status: 400 });
+    if (!body.success) {
+      return NextResponse.json({ error: body.error.flatten() }, { status: 400 });
     }
+
+    const { title, value, stage, probability, notes, contact_id, expected_close_date } = body.data;
 
     const newDealId = `deal_${crypto.randomUUID()}`;
     const [inserted] = await db.insert(deals).values({
@@ -59,9 +67,9 @@ export async function POST(req: Request) {
       workspace_id: ws.id,
       contact_id: contact_id || null,
       title,
-      value: parseInt(value, 10) || 0,
+      value: value || 0,
       stage,
-      probability: parseInt(probability, 10) || 0,
+      probability: probability || 0,
       notes: notes || null,
       expected_close_date: expected_close_date ? new Date(expected_close_date) : null,
       priority_score: 0,

@@ -5,6 +5,12 @@ import { eq, desc } from "drizzle-orm";
 import { NextResponse } from "next/server";
 import crypto from "crypto";
 import { processMeeting } from "@/lib/agents/meeting-agent";
+import { createInsertSchema } from "drizzle-zod";
+import { z } from "zod";
+
+const insertMeetingSchema = createInsertSchema(meetings, {
+  meeting_date: z.coerce.date().optional(),
+}).omit({ id: true, workspace_id: true, created_at: true, updated_at: true, processed: true, processed_at: true, extracted_data: true, s3_key: true, attendees: true });
 
 export async function GET() {
   const session = await auth();
@@ -47,12 +53,14 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: "Workspace not found" }, { status: 404 });
     }
 
-    const body = await req.json();
-    const { title, raw_notes, meeting_date } = body;
+    const rawBody = await req.json();
+    const body = insertMeetingSchema.safeParse(rawBody);
 
-    if (!title || !raw_notes) {
-      return NextResponse.json({ error: "Missing required fields: title, raw_notes" }, { status: 400 });
+    if (!body.success) {
+      return NextResponse.json({ error: body.error.flatten() }, { status: 400 });
     }
+
+    const { title, raw_notes, meeting_date } = body.data;
 
     const newMeetingId = `mtg_${crypto.randomUUID()}`;
     const [inserted] = await db.insert(meetings).values({

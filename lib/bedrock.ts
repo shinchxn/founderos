@@ -1,4 +1,5 @@
 import { BedrockRuntimeClient, InvokeModelCommand } from "@aws-sdk/client-bedrock-runtime";
+import pRetry from "p-retry";
 
 let cachedClient: BedrockRuntimeClient | null = null;
 
@@ -42,14 +43,16 @@ export async function invokeClaudeSonnet(systemPrompt: string, userPrompt: strin
     }),
   });
 
-  try {
-    const response = await bedrockClient.send(command);
-    const decodedBody = new TextDecoder().decode(response.body);
-    const parsedStats = JSON.parse(decodedBody);
-    return parsedStats.content[0].text;
-  } catch (error: any) {
-    throw new Error(`Failed to invoke Bedrock model Claude Sonnet: ${error.message}`);
-  }
+  return pRetry(async () => {
+    try {
+      const response = await bedrockClient.send(command);
+      const decodedBody = new TextDecoder().decode(response.body);
+      const parsedStats = JSON.parse(decodedBody);
+      return parsedStats.content[0].text;
+    } catch (error: any) {
+      throw new Error(`Failed to invoke Bedrock model Claude Sonnet: ${error.message}`);
+    }
+  }, { retries: 2 });
 }
 
 export async function invokeClaudeHaiku(userPrompt: string, maxTokens: number): Promise<string> {
@@ -69,12 +72,14 @@ export async function invokeClaudeHaiku(userPrompt: string, maxTokens: number): 
     }),
   });
 
-  try {
-    const response = await bedrockClient.send(command);
-    const decodedBody = new TextDecoder().decode(response.body);
-    const parsedStats = JSON.parse(decodedBody);
-    return parsedStats.content[0].text;
-  } catch (error: any) {
-    throw new Error(`Failed to invoke Bedrock model Claude Haiku: ${error.message}`);
-  }
+  return pRetry(async () => {
+    try {
+      const response = await bedrockClient.send(command);
+      const decodedBody = new TextDecoder().decode(response.body);
+      const parsedStats = JSON.parse(decodedBody);
+      return parsedStats.content[0].text;
+    } catch (error: any) {
+      throw new Error(`Failed to invoke Bedrock model Claude Haiku: ${error.message}`);
+    }
+  }, { retries: 2 });
 }

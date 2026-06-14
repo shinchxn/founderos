@@ -91,6 +91,7 @@ Meetings: ${recentMeetings.map(m => m.title).join(", ")}
       raw_ai_response: responseText,
       duration_ms: Date.now() - startTime,
       items_processed: 1,
+      output_summary: `Drafted investor update for week of ${oneWeekAgo.toLocaleDateString()}.`,
       completed_at: new Date(),
     }).where(eq(agent_runs.id, runId));
 

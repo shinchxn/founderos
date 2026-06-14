@@ -4,6 +4,9 @@ import { contacts, workspaces } from "@/lib/db/schema";
 import { eq, desc } from "drizzle-orm";
 import { NextResponse } from "next/server";
 import crypto from "crypto";
+import { createInsertSchema } from "drizzle-zod";
+
+const insertContactSchema = createInsertSchema(contacts).omit({ id: true, workspace_id: true, created_at: true, updated_at: true, last_contacted_at: true });
 
 export async function GET() {
   const session = await auth();
@@ -46,12 +49,14 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: "Workspace not found" }, { status: 404 });
     }
 
-    const body = await req.json();
-    const { name, email, company, title, phone, notes, tags } = body;
+    const rawBody = await req.json();
+    const body = insertContactSchema.safeParse(rawBody);
 
-    if (!name) {
-      return NextResponse.json({ error: "Missing required field: name" }, { status: 400 });
+    if (!body.success) {
+      return NextResponse.json({ error: body.error.flatten() }, { status: 400 });
     }
+
+    const { name, email, company, title, phone, notes, tags } = body.data;
 
     const newContactId = `contact_${crypto.randomUUID()}`;
     const [inserted] = await db.insert(contacts).values({

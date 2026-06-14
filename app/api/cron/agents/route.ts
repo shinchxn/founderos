@@ -3,6 +3,7 @@ import { processAnomalies } from "../../../../lib/agents/anomaly-agent";
 import { processInvestorUpdate } from "../../../../lib/agents/investor-update-agent";
 import { processSalesDigest } from "../../../../lib/agents/sales-digest-agent";
 import { db } from "../../../../lib/db";
+import pLimit from "p-limit";
 
 export async function GET(req: Request) {
   const authHeader = req.headers.get("authorization");
@@ -13,19 +14,19 @@ export async function GET(req: Request) {
   try {
     const allWorkspaces = await db.query.workspaces.findMany();
     
-    for (const ws of allWorkspaces) {
-      // 1. Run Anomaly Agent Daily
-      await processAnomalies(ws.id);
-      
-      // 2. Run Sales Digest Agent Daily
-      await processSalesDigest(ws.id);
-      
-      // 3. Run Investor Update Agent on Fridays only
-      const today = new Date();
-      if (today.getDay() === 5) {
-        await processInvestorUpdate(ws.id);
-      }
-    }
+    const limit = pLimit(3);
+    const today = new Date();
+    const isFriday = today.getDay() === 5;
+
+    await Promise.allSettled(
+      allWorkspaces.map(ws => limit(async () => {
+        await processAnomalies(ws.id);
+        await processSalesDigest(ws.id);
+        if (isFriday) {
+          await processInvestorUpdate(ws.id);
+        }
+      }))
+    );
 
     return NextResponse.json({ success: true });
   } catch (error: any) {

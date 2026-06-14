@@ -9,9 +9,20 @@ export type Meeting = InferSelectModel<typeof schema.meetings>;
 export type NewMeeting = InferInsertModel<typeof schema.meetings>;
 export type RevenueMetric = InferSelectModel<typeof schema.kpis>;
 export type RevenueAnomaly = InferSelectModel<typeof schema.alerts>;
-export type Investor = any;
+export interface Investor {
+  id: string;
+  name: string;
+  email: string;
+  firm?: string;
+  notes?: string;
+}
 export type InvestorUpdate = InferSelectModel<typeof schema.investor_updates>;
-export type SalesDigest = any;
+export interface SalesDigest {
+  id: string;
+  date: string | Date;
+  summary: string;
+  tasks_generated: number;
+}
 export type AgentRun = InferSelectModel<typeof schema.agent_runs>;
 
 export type AgentType =

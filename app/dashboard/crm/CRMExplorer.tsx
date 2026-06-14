@@ -2,6 +2,9 @@
 
 import { useState } from "react";
 import { Plus, Search, Filter, MoreHorizontal, Users, CreditCard, ChevronRight, X, Loader2, ArrowRight } from "lucide-react";
+import { DndContext, useDraggable, useDroppable } from "@dnd-kit/core";
+import { CSS } from "@dnd-kit/utilities";
+import { toast } from "sonner";
 
 export interface Deal {
   id: string;
@@ -28,6 +31,96 @@ export interface Contact {
   notes: string | null;
   tags: any;
   created_at?: string | Date | null;
+}
+
+function DraggableDealCard({ deal, contacts }: { deal: Deal, contacts: Contact[] }) {
+  const { attributes, listeners, setNodeRef, transform, isDragging } = useDraggable({
+    id: deal.id,
+    data: deal,
+  });
+
+  const style = {
+    transform: CSS.Translate.toString(transform),
+    opacity: isDragging ? 0.5 : 1,
+  };
+
+  const clientLabel = contacts.find((c) => c.id === deal.contact_id);
+
+  return (
+    <div
+      ref={setNodeRef}
+      style={style}
+      {...listeners}
+      {...attributes}
+      className="bg-[#1a2332]/30 border border-[#1a2332] hover:border-[#0ea5e9]/30 rounded-md p-3 cursor-grab active:cursor-grabbing hover:bg-[#1a2332]/50 transition-colors z-50 relative"
+    >
+      <div className="flex justify-between items-start mb-2">
+        <span className="text-[9px] font-bold text-[#10b981] bg-[#10b981]/10 px-1.5 py-0.5 rounded uppercase font-mono">
+          Prob: {deal.probability}%
+        </span>
+        {deal.priority_score && deal.priority_score > 0 ? (
+          <span className="text-[9px] font-bold text-red-400 bg-red-400/10 px-1.5 rounded uppercase">
+            Action Score: {deal.priority_score}
+          </span>
+        ) : null}
+      </div>
+      <h4 className="text-xs font-bold text-primary mb-1 truncate">
+        {deal.title}
+      </h4>
+      {clientLabel && (
+        <p className="text-[11px] text-muted mb-3 truncate flex items-center gap-1.5">
+          <span>{clientLabel.name}</span>
+          {clientLabel.company && (
+            <span className="opacity-70">• {clientLabel.company}</span>
+          )}
+        </p>
+      )}
+      <div className="flex justify-between items-end mt-auto pt-2 border-t border-[#1a2332]/40">
+        <span className="font-mono text-sm font-semibold text-[#10b981]">
+          ${deal.value.toLocaleString()}
+        </span>
+        <span className="text-[9px] font-mono text-muted">
+          {deal.created_at ? new Date(deal.created_at).toLocaleDateString(undefined, {month: "short", day: "numeric"}) : "—"}
+        </span>
+      </div>
+    </div>
+  );
+}
+
+function DroppableColumn({ stage, dealsList, contacts, calculateStageSum }: { stage: any, dealsList: Deal[], contacts: Contact[], calculateStageSum: (deals: Deal[]) => string }) {
+  const { setNodeRef } = useDroppable({
+    id: stage.key,
+  });
+
+  return (
+    <div
+      ref={setNodeRef}
+      className="min-w-[280px] w-[280px] flex flex-col h-full bg-[#111820] rounded-md border border-[#1a2332] shrink-0"
+    >
+      <div className="p-3 border-b border-[#1a2332] flex justify-between items-center bg-[#080b10] sticky top-0 rounded-t-md shrink-0">
+        <div className="flex items-center gap-2">
+          <div className={`w-2 h-2 rounded-full ${stage.color}`}></div>
+          <h3 className="text-[11px] font-bold tracking-wider uppercase text-primary">
+            {stage.label} <span className="text-muted ml-0.5">{dealsList.length}</span>
+          </h3>
+        </div>
+        <span className="font-mono text-xs font-semibold text-muted">
+          {calculateStageSum(dealsList)}
+        </span>
+      </div>
+      <div className="flex-1 overflow-y-auto p-2 space-y-2">
+        {dealsList.length === 0 ? (
+          <div className="py-8 text-center text-muted font-sans text-xs">
+            No deals in {stage.label}
+          </div>
+        ) : (
+          dealsList.map((deal) => (
+            <DraggableDealCard key={deal.id} deal={deal} contacts={contacts} />
+          ))
+        )}
+      </div>
+    </div>
+  );
 }
 
 export function CRMExplorer({
@@ -115,18 +208,15 @@ export function CRMExplorer({
       });
 
       if (res.ok) {
-        const newDeal = await res.json();
-        setDeals((prev) => [newDeal, ...prev]);
+        const data = await res.json();
+        setDeals([data.deal, ...deals]);
         setShowDealSheet(false);
-        setDealTitle("");
-        setDealValue("");
-        setDealStage("lead");
-        setDealProb("10");
-        setDealContact("");
-        setDealNotes("");
+        setDealTitle(""); setDealValue(""); setDealStage("lead"); setDealProb("10"); setDealNotes(""); setDealContact("");
+        toast.success(`Deal "${data.deal.title}" created successfully`);
       }
-    } catch (err) {
-      console.error(err);
+    } catch (error) {
+      console.error(error);
+      toast.error("Failed to create deal. Please try again.");
     } finally {
       setIsSubmitting(false);
     }
@@ -152,20 +242,44 @@ export function CRMExplorer({
       });
 
       if (res.ok) {
-        const newContact = await res.json();
-        setContacts((prev) => [newContact, ...prev]);
+        const data = await res.json();
+        setContacts([data.contact, ...contacts]);
         setShowContactSheet(false);
-        setContactName("");
-        setContactEmail("");
-        setContactCompany("");
-        setContactTitle("");
-        setContactPhone("");
-        setContactNotes("");
+        setContactName(""); setContactEmail(""); setContactCompany(""); setContactTitle(""); setContactPhone(""); setContactNotes("");
+        toast.success(`Contact "${data.contact.name}" created successfully`);
       }
-    } catch (err) {
-      console.error(err);
+    } catch (error) {
+      console.error(error);
+      toast.error("Failed to create contact. Please try again.");
     } finally {
       setIsSubmitting(false);
+    }
+  };
+
+  const handleDragEnd = async (event: any) => {
+    const { active, over } = event;
+    if (!over) return;
+
+    const dealId = active.id;
+    const newStage = over.id;
+
+    const deal = deals.find(d => d.id === dealId);
+    if (!deal || deal.stage === newStage) return;
+
+    const originalDeals = [...deals];
+    setDeals(deals.map(d => d.id === dealId ? { ...d, stage: newStage } : d));
+
+    try {
+      const res = await fetch(`/api/deals/${dealId}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ stage: newStage })
+      });
+      if (!res.ok) {
+        setDeals(originalDeals);
+      }
+    } catch (err) {
+      setDeals(originalDeals);
     }
   };
 
@@ -229,80 +343,16 @@ export function CRMExplorer({
 
       {/* Kanban Pipeline View */}
       {activeTab === "kanban" && (
-        <div className="flex-1 flex overflow-x-auto gap-4 py-4 min-h-0 select-none">
-          {stages.map((stage) => {
-            const list = dealsByStage[stage.key] || [];
-            return (
-              <div
-                key={stage.key}
-                className="min-w-[280px] w-[280px] flex flex-col h-full bg-[#111820] rounded-md border border-[#1a2332] shrink-0"
-              >
-                {/* Column header */}
-                <div className="p-3 border-b border-[#1a2332] flex justify-between items-center bg-[#080b10] sticky top-0 rounded-t-md shrink-0">
-                  <div className="flex items-center gap-2">
-                    <div className={`w-2 h-2 rounded-full ${stage.color}`}></div>
-                    <h3 className="text-[11px] font-bold tracking-wider uppercase text-primary">
-                      {stage.label}{" "}
-                      <span className="text-muted ml-0.5">{list.length}</span>
-                    </h3>
-                  </div>
-                  <span className="font-mono text-xs font-semibold text-muted">
-                    {calculateStageSum(list)}
-                  </span>
-                </div>
-
-                {/* Cards List container */}
-                <div className="flex-1 overflow-y-auto p-2 space-y-2">
-                  {list.length === 0 ? (
-                    <div className="py-8 text-center text-muted font-sans text-xs">
-                      No deals in {stage.label}
-                    </div>
-                  ) : (
-                    list.map((deal) => {
-                      const clientLabel = contacts.find((c) => c.id === deal.contact_id);
-                      return (
-                        <div
-                          key={deal.id}
-                          className="bg-[#1a2332]/30 border border-[#1a2332] hover:border-[#0ea5e9]/30 rounded-md p-3 cursor-pointer hover:bg-[#1a2332]/50 transition-colors"
-                        >
-                          <div className="flex justify-between items-start mb-2">
-                            <span className="text-[9px] font-bold text-[#10b981] bg-[#10b981]/10 px-1.5 py-0.5 rounded uppercase font-mono">
-                              Prob: {deal.probability}%
-                            </span>
-                            {deal.priority_score && deal.priority_score > 0 ? (
-                              <span className="text-[9px] font-bold text-red-400 bg-red-400/10 px-1.5 rounded uppercase">
-                                Action Score: {deal.priority_score}
-                              </span>
-                            ) : null}
-                          </div>
-                          <h4 className="text-xs font-bold text-primary mb-1 truncate">
-                            {deal.title}
-                          </h4>
-                          {clientLabel && (
-                            <p className="text-[11px] text-muted mb-3 truncate flex items-center gap-1.5">
-                              <span>{clientLabel.name}</span>
-                              {clientLabel.company && (
-                                <span className="opacity-70">• {clientLabel.company}</span>
-                              )}
-                            </p>
-                          )}
-                          <div className="flex justify-between items-end mt-auto pt-2 border-t border-[#1a2332]/40">
-                            <span className="font-mono text-sm font-semibold text-[#10b981]">
-                              ${deal.value.toLocaleString()}
-                            </span>
-                            <span className="text-[9px] font-mono text-muted">
-                              {deal.created_at ? new Date(deal.created_at).toLocaleDateString(undefined, {month: "short", day: "numeric"}) : "—"}
-                            </span>
-                          </div>
-                        </div>
-                      );
-                    })
-                  )}
-                </div>
-              </div>
-            );
-          })}
-        </div>
+        <DndContext onDragEnd={handleDragEnd}>
+          <div className="flex-1 flex overflow-x-auto gap-4 py-4 min-h-0 select-none">
+            {stages.map((stage) => {
+              const list = dealsByStage[stage.key] || [];
+              return (
+                <DroppableColumn key={stage.key} stage={stage} dealsList={list} contacts={contacts} calculateStageSum={calculateStageSum} />
+              );
+            })}
+          </div>
+        </DndContext>
       )}
 
       {/* Contacts Table Database View */}

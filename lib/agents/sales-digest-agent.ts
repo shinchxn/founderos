@@ -61,8 +61,9 @@ Generate exactly 3 high-impact follow-up tasks for the most critical deals. Retu
     const responseText = await invokeClaudeSonnet(systemPrompt, prompt, 1024);
     const tasksArr = JSON.parse(responseText);
 
+    let tasksInserted = 0;
     for (const t of tasksArr) {
-      if (itemsProcessed >= 3) break; // Limit
+      if (tasksInserted >= 3) break; // Limit
       await db.insert(tasks).values({
         id: crypto.randomUUID(),
         workspace_id: workspaceId,
@@ -73,13 +74,14 @@ Generate exactly 3 high-impact follow-up tasks for the most critical deals. Retu
         linked_entity_type: "deal",
         linked_entity_id: t.deal_id,
       });
+      tasksInserted++;
     }
 
     await db.insert(agent_hours_saved).values({
       id: crypto.randomUUID(),
       workspace_id: workspaceId,
       agent_type: "sales_digest",
-      action_description: `Scored ${activeDeals.length} deals and generated ${tasksArr.length} tasks`,
+      action_description: `Scored ${activeDeals.length} deals and generated ${tasksInserted} tasks`,
       estimated_minutes_saved: 20,
     });
 
@@ -89,6 +91,7 @@ Generate exactly 3 high-impact follow-up tasks for the most critical deals. Retu
       raw_ai_response: responseText,
       duration_ms: Date.now() - startTime,
       items_processed: activeDeals.length,
+      output_summary: `Scored ${activeDeals.length} deals, generated ${tasksInserted} follow-up tasks.`,
       completed_at: new Date(),
     }).where(eq(agent_runs.id, runId));
 

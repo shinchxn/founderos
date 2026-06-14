@@ -3,6 +3,7 @@ import Link from "next/link";
 import { LayoutDashboard, Users, CheckSquare, LineChart, Video, Mail, Bot, Settings, Plus } from "lucide-react";
 import { auth } from "@/auth";
 import { db } from "@/lib/db";
+import { Toaster } from "sonner";
 import { workspaces, kpis } from "@/lib/db/schema";
 import { eq } from "drizzle-orm";
 import Image from "next/image";
@@ -53,7 +54,7 @@ export default async function DashboardLayout({ children }: { children: ReactNod
             New Agent
           </button>
         </div>
-        
+
         <nav className="flex-1 overflow-y-auto px-2 space-y-1">
           <div className="text-[11px] font-semibold text-muted uppercase tracking-wider px-2 mb-2 mt-4">Operations</div>
           <Link href="/dashboard" className="flex items-center gap-3 text-primary font-medium bg-[#1a2332] px-3 py-2 rounded-md transition-colors">
@@ -91,7 +92,7 @@ export default async function DashboardLayout({ children }: { children: ReactNod
             Settings
           </Link>
         </nav>
-        
+
         <div className="px-4 mt-auto pt-4 border-t border-[#1a2332]">
           <div className="bg-[#1a2332]/50 border border-[#1a2332] p-3 rounded-md mb-4 flex justify-between items-center">
             <div>
@@ -100,7 +101,7 @@ export default async function DashboardLayout({ children }: { children: ReactNod
             </div>
             <div className="w-2 h-2 rounded-full bg-[#10b981]"></div>
           </div>
-          
+
           <div className="flex items-center justify-between text-sm">
             <div className="flex items-center gap-2 min-w-0">
               {userImage ? (
@@ -132,7 +133,7 @@ export default async function DashboardLayout({ children }: { children: ReactNod
               <span>LIVE</span>
             </div>
           </div>
-          
+
           <div className="flex items-center gap-4">
             <form action={generateDemoData}>
               <button type="submit" className="flex items-center gap-2 text-xs font-semibold text-muted uppercase tracking-wider border border-[#1a2332] px-3 py-1.5 rounded bg-[#111820] hover:text-[#0ea5e9] hover:border-[#0ea5e9]/50 transition-colors cursor-pointer">
@@ -149,6 +150,7 @@ export default async function DashboardLayout({ children }: { children: ReactNod
           {children}
         </main>
       </div>
+      <Toaster theme="dark" />
     </div>
   );
 }
