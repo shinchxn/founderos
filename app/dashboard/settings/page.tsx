@@ -1,5 +1,6 @@
 import { auth } from "@/auth";
 import { redirect } from "next/navigation";
+import { DemoDataButton } from "./DemoDataButton";
 
 export const dynamic = "force-dynamic";
 
@@ -36,7 +37,8 @@ export default async function SettingsPage() {
              />
            </div>
            
-           <div className="pt-4 border-t border-[#1a2332] flex justify-end">
+           <div className="pt-4 border-t border-[#1a2332] flex justify-between items-center">
+             <DemoDataButton />
              <button className="bg-gradient-to-br from-[#0ea5e9] to-[#8b5cf6] text-white text-sm font-semibold tracking-wider uppercase px-4 py-2 rounded">
                Save Changes
              </button>

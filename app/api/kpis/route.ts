@@ -4,6 +4,7 @@ import { kpis, workspaces } from "@/lib/db/schema";
 import { eq, desc } from "drizzle-orm";
 import { NextResponse } from "next/server";
 import crypto from "crypto";
+import { revalidatePath } from "next/cache";
 
 export async function GET() {
   const session = await auth();
@@ -69,6 +70,7 @@ export async function POST(req: Request) {
       anomalies: anomalies || null,
     }).returning();
 
+    revalidatePath("/dashboard/kpis");
     return NextResponse.json(inserted);
   } catch (error: any) {
     return NextResponse.json({ error: error.message }, { status: 500 });

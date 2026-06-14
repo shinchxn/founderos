@@ -47,3 +47,13 @@ export async function completeTask(taskId: string) {
   revalidatePath("/dashboard/tasks");
   return { success: true };
 }
+
+export async function deleteTask(taskId: string) {
+  const session = await auth();
+  if (!session?.user?.id) return { error: "Unauthorized" };
+
+  await db.delete(tasks).where(eq(tasks.id, taskId));
+
+  revalidatePath("/dashboard/tasks");
+  return { success: true };
+}

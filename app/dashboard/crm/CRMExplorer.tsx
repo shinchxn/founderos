@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { Plus, Search, Filter, MoreHorizontal, Users, CreditCard, ChevronRight, X, Loader2, ArrowRight } from "lucide-react";
+import { Plus, Search, Filter, MoreHorizontal, Users, CreditCard, ChevronRight, X, Loader2, ArrowRight, Trash2 } from "lucide-react";
 import { DndContext, useDraggable, useDroppable } from "@dnd-kit/core";
 import { CSS } from "@dnd-kit/utilities";
 import { toast } from "sonner";
@@ -33,7 +33,7 @@ export interface Contact {
   created_at?: string | Date | null;
 }
 
-function DraggableDealCard({ deal, contacts }: { deal: Deal, contacts: Contact[] }) {
+function DraggableDealCard({ deal, contacts, onDelete }: { deal: Deal, contacts: Contact[], onDelete: (id: string) => void }) {
   const { attributes, listeners, setNodeRef, transform, isDragging } = useDraggable({
     id: deal.id,
     data: deal,
@@ -55,14 +55,22 @@ function DraggableDealCard({ deal, contacts }: { deal: Deal, contacts: Contact[]
       className="bg-[#1a2332]/30 border border-[#1a2332] hover:border-[#0ea5e9]/30 rounded-md p-3 cursor-grab active:cursor-grabbing hover:bg-[#1a2332]/50 transition-colors z-50 relative"
     >
       <div className="flex justify-between items-start mb-2">
-        <span className="text-[9px] font-bold text-[#10b981] bg-[#10b981]/10 px-1.5 py-0.5 rounded uppercase font-mono">
-          Prob: {deal.probability}%
-        </span>
-        {deal.priority_score && deal.priority_score > 0 ? (
-          <span className="text-[9px] font-bold text-red-400 bg-red-400/10 px-1.5 rounded uppercase">
-            Action Score: {deal.priority_score}
+        <div className="flex gap-1.5">
+          <span className="text-[9px] font-bold text-[#10b981] bg-[#10b981]/10 px-1.5 py-0.5 rounded uppercase font-mono">
+            Prob: {deal.probability}%
           </span>
-        ) : null}
+          {deal.priority_score && deal.priority_score > 0 ? (
+            <span className="text-[9px] font-bold text-red-400 bg-red-400/10 px-1.5 rounded uppercase">
+              Action Score: {deal.priority_score}
+            </span>
+          ) : null}
+        </div>
+        <button 
+          onPointerDown={(e) => { e.stopPropagation(); onDelete(deal.id); }} 
+          className="text-muted hover:text-[#ef4444] transition-colors relative z-50 cursor-pointer"
+        >
+          <Trash2 className="w-3.5 h-3.5" />
+        </button>
       </div>
       <h4 className="text-xs font-bold text-primary mb-1 truncate">
         {deal.title}
@@ -87,7 +95,7 @@ function DraggableDealCard({ deal, contacts }: { deal: Deal, contacts: Contact[]
   );
 }
 
-function DroppableColumn({ stage, dealsList, contacts, calculateStageSum }: { stage: any, dealsList: Deal[], contacts: Contact[], calculateStageSum: (deals: Deal[]) => string }) {
+function DroppableColumn({ stage, dealsList, contacts, calculateStageSum, onDeleteDeal }: { stage: any, dealsList: Deal[], contacts: Contact[], calculateStageSum: (deals: Deal[]) => string, onDeleteDeal: (id: string) => void }) {
   const { setNodeRef } = useDroppable({
     id: stage.key,
   });
@@ -114,8 +122,8 @@ function DroppableColumn({ stage, dealsList, contacts, calculateStageSum }: { st
             No deals in {stage.label}
           </div>
         ) : (
-          dealsList.map((deal) => (
-            <DraggableDealCard key={deal.id} deal={deal} contacts={contacts} />
+          dealsList.map((d) => (
+            <DraggableDealCard key={d.id} deal={d} contacts={contacts} onDelete={onDeleteDeal} />
           ))
         )}
       </div>
@@ -188,6 +196,21 @@ export function CRMExplorer({
     return total >= 1000 ? `$${(total / 1000).toFixed(0)}k` : `$${total}`;
   };
 
+  const handleDeleteDeal = async (id: string) => {
+    if (!window.confirm("Are you sure you want to delete this deal?")) return;
+    try {
+      const res = await fetch(`/api/deals/${id}`, { method: "DELETE" });
+      if (res.ok) {
+        setDeals(deals.filter(d => d.id !== id));
+        toast.success("Deal deleted");
+      } else {
+        toast.error("Failed to delete deal");
+      }
+    } catch (e) {
+      toast.error("Failed to delete deal");
+    }
+  };
+
   const handleCreateDeal = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!dealTitle || !dealValue) return;
@@ -209,10 +232,10 @@ export function CRMExplorer({
 
       if (res.ok) {
         const data = await res.json();
-        setDeals([data.deal, ...deals]);
+        setDeals([data, ...deals]);
         setShowDealSheet(false);
         setDealTitle(""); setDealValue(""); setDealStage("lead"); setDealProb("10"); setDealNotes(""); setDealContact("");
-        toast.success(`Deal "${data.deal.title}" created successfully`);
+        toast.success(`Deal "${data.title}" created successfully`);
       }
     } catch (error) {
       console.error(error);
@@ -243,10 +266,10 @@ export function CRMExplorer({
 
       if (res.ok) {
         const data = await res.json();
-        setContacts([data.contact, ...contacts]);
+        setContacts([data, ...contacts]);
         setShowContactSheet(false);
         setContactName(""); setContactEmail(""); setContactCompany(""); setContactTitle(""); setContactPhone(""); setContactNotes("");
-        toast.success(`Contact "${data.contact.name}" created successfully`);
+        toast.success(`Contact "${data.name}" created successfully`);
       }
     } catch (error) {
       console.error(error);
@@ -348,7 +371,7 @@ export function CRMExplorer({
             {stages.map((stage) => {
               const list = dealsByStage[stage.key] || [];
               return (
-                <DroppableColumn key={stage.key} stage={stage} dealsList={list} contacts={contacts} calculateStageSum={calculateStageSum} />
+                <DroppableColumn key={stage.key} stage={stage} dealsList={list} contacts={contacts} calculateStageSum={calculateStageSum} onDeleteDeal={handleDeleteDeal} />
               );
             })}
           </div>

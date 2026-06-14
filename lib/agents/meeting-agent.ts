@@ -20,10 +20,11 @@ export async function processMeeting(meetingId: string) {
     triggered_by: "cron",
   });
 
+const trimmedNotes = meeting.raw_notes.substring(0, 15000);
   const prompt = `You are an AI assistant extracting structured data from startup meeting notes. Respond with ONLY valid JSON. No explanation. No markdown. No code blocks.
 Meeting title: ${meeting.title}
 Meeting date: ${meeting.meeting_date.toISOString()}
-Notes: ${meeting.raw_notes}
+Notes: ${trimmedNotes}
 Return exactly this JSON structure:
 {
 "summary": "2 to 3 sentence summary",

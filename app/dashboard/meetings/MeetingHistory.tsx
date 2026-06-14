@@ -166,7 +166,7 @@ export function MeetingHistory({ initialMeetings }: { initialMeetings: Meeting[]
               ) : (
                 <div className="flex flex-col items-center justify-center py-10 text-center">
                   <Loader2 className="w-8 h-8 text-[#0ea5e9] animate-spin mb-3 animate-duration-1000" />
-                  <p className="text-sm text-muted">Agent processing in queue... click &quot;RERUN AGENT&quot; to force analyze.</p>
+                  <p className="text-sm text-muted">Agent is analyzing and extracting action items... click &quot;RERUN AGENT&quot; if stuck.</p>
                 </div>
               )}
 

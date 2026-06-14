@@ -1,15 +1,39 @@
 "use client";
 
 import { useState } from "react";
-import { Plus, CheckCircle, Circle, Clock } from "lucide-react";
-import { addTask, completeTask } from "./actions";
+import { Plus, CheckCircle, Circle, Clock, Trash2 } from "lucide-react";
+import { addTask, completeTask, deleteTask } from "./actions";
+import { toast } from "sonner";
 
 export function TaskBoard({ activeTasks, completedTasks }: { activeTasks: any[], completedTasks: any[] }) {
   const [isAdding, setIsAdding] = useState(false);
 
   async function handleAdd(formData: FormData) {
-    await addTask(formData);
-    setIsAdding(false);
+    try {
+      const res = await addTask(formData);
+      if (res.error) {
+        toast.error(res.error);
+        return;
+      }
+      setIsAdding(false);
+      toast.success("Task created successfully");
+    } catch (e) {
+      toast.error("Failed to create task");
+    }
+  }
+
+  async function handleDeleteTask(taskId: string) {
+    if (!window.confirm("Are you sure you want to delete this task?")) return;
+    try {
+      const res = await deleteTask(taskId);
+      if (res.error) {
+        toast.error(res.error);
+        return;
+      }
+      toast.success("Task deleted");
+    } catch (e) {
+      toast.error("Failed to delete task");
+    }
   }
 
   return (
@@ -67,9 +91,12 @@ export function TaskBoard({ activeTasks, completedTasks }: { activeTasks: any[],
                      {t.description && <p className="text-xs text-muted mt-1">{t.description}</p>}
                      <div className="flex gap-2 items-center mt-2">
                        <Clock className="w-3 h-3 text-muted" />
-                       <span className="text-[10px] text-muted tracking-wider uppercase font-mono">{new Date(t.created_at).toLocaleDateString()}</span>
+                       <span className="text-[10px] text-muted tracking-wider uppercase font-mono">{t.created_at ? new Date(t.created_at).toLocaleDateString() : '—'}</span>
                      </div>
                    </div>
+                   <button onClick={() => handleDeleteTask(t.id)} className="text-muted hover:text-[#ef4444] transition-colors mt-0.5 ml-2 shrink-0">
+                     <Trash2 className="w-4 h-4" />
+                   </button>
                  </div>
                ))}
              </div>
@@ -91,9 +118,12 @@ export function TaskBoard({ activeTasks, completedTasks }: { activeTasks: any[],
                      <span className="font-medium text-sm text-primary line-through">{t.title}</span>
                      <div className="flex gap-2 items-center mt-2">
                        <Clock className="w-3 h-3 text-muted" />
-                       <span className="text-[10px] text-muted tracking-wider uppercase font-mono">Completed {new Date(t.completed_at).toLocaleDateString()}</span>
+                       <span className="text-[10px] text-muted tracking-wider uppercase font-mono">Completed {t.completed_at ? new Date(t.completed_at).toLocaleDateString() : '—'}</span>
                      </div>
                    </div>
+                   <button onClick={() => handleDeleteTask(t.id)} className="text-muted hover:text-[#ef4444] transition-colors mt-0.5 ml-2 shrink-0">
+                     <Trash2 className="w-4 h-4" />
+                   </button>
                  </div>
                ))}
              </div>

@@ -81,5 +81,5 @@ export async function invokeClaudeHaiku(userPrompt: string, maxTokens: number): 
     } catch (error: any) {
       throw new Error(`Failed to invoke Bedrock model Claude Haiku: ${error.message}`);
     }
-  }, { retries: 2 });
+  }, { retries: 1, minTimeout: 500 });
 }
