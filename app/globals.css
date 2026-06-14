@@ -1,0 +1,60 @@
+@import "tailwindcss";
+@plugin "tailwindcss-animate";
+
+@theme {
+  --color-background: #080b10;
+  --color-surface: #111820;
+  --color-surface-hover: #1a2332;
+  --color-border: #1a2332;
+  --color-border-hover: rgba(14, 165, 233, 0.3);
+  --color-primary: #e8edf2;
+  --color-muted: #8896a5;
+
+  --color-accent-blue: #0ea5e9;
+  --color-accent-green: #10b981;
+  --color-accent-amber: #f59e0b;
+  --color-accent-red: #ef4444;
+  --color-accent-purple: #8b5cf6;
+
+  --color-gradient-start: #0ea5e9;
+  --color-gradient-end: #8b5cf6;
+
+  --font-sans: var(--font-sans), sans-serif;
+  --font-mono: var(--font-mono), monospace;
+
+  --radius-card: 6px;
+  --radius-btn: 4px;
+}
+
+@layer base {
+  body {
+    background-color: var(--color-background);
+    color: var(--color-primary);
+  }
+
+  /* Custom scrollbar */
+  ::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+  }
+  ::-webkit-scrollbar-track {
+    background: var(--color-background);
+  }
+  ::-webkit-scrollbar-thumb {
+    background: var(--color-border);
+    border-radius: 3px;
+  }
+  ::-webkit-scrollbar-thumb:hover {
+    background: var(--color-muted);
+  }
+}
+
+@layer utilities {
+  .card-hover {
+    @apply transition-colors duration-150 hover:border-border-hover;
+  }
+  
+  .primary-gradient {
+    @apply bg-gradient-to-br from-gradient-start to-gradient-end text-white;
+  }
+}
