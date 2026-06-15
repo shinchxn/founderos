@@ -39,14 +39,8 @@ Return exactly this JSON structure:
 
   try {
     const responseText = await invokeClaudeHaiku(prompt, 2048);
-    let data;
-    try {
-      data = JSON.parse(responseText);
-    } catch {
-      // Strip markdown code blocks Claude sometimes adds
-      const cleaned = responseText.replace(/```json\n?|```/g, '').trim();
-      data = JSON.parse(cleaned);
-    }
+    const cleanJSON = (text: string) => text.replace(/```json\n?|```/g, '').trim();
+    const data = JSON.parse(cleanJSON(responseText));
 
     await db.update(meetings).set({
       processed: true,
@@ -109,5 +103,6 @@ Return exactly this JSON structure:
       duration_ms: Date.now() - startTime,
       completed_at: new Date(),
     }).where(eq(agent_runs.id, runId));
+    throw error;
   }
 }

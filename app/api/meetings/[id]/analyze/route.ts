@@ -6,6 +6,7 @@ import { NextResponse } from "next/server";
 import { processMeeting } from "@/lib/agents/meeting-agent";
 
 export const dynamic = "force-dynamic";
+export const maxDuration = 60;
 
 export async function POST(req: Request, { params }: { params: Promise<{ id: string }> }) {
   const session = await auth();

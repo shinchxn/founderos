@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Calendar, CheckCircle2, AlertTriangle, MessageSquare, ChevronRight, Play, Loader2, ArrowLeft } from "lucide-react";
 
 interface Meeting {
@@ -21,21 +21,30 @@ export function MeetingHistory({ initialMeetings }: { initialMeetings: Meeting[]
   const [meetings, setMeetings] = useState<Meeting[]>(initialMeetings);
   const [selectedMeetingId, setSelectedMeetingId] = useState<string | null>(null);
   const [analyzingId, setAnalyzingId] = useState<string | null>(null);
+  const [analyzeError, setAnalyzeError] = useState<string | null>(null);
 
   const selectedMeeting = meetings.find((m) => m.id === selectedMeetingId);
 
+  useEffect(() => {
+    setAnalyzeError(null);
+  }, [selectedMeetingId]);
+
   const handleReprocess = async (id: string) => {
     setAnalyzingId(id);
+    setAnalyzeError(null);
     try {
       const res = await fetch(`/api/meetings/${id}/analyze`, { method: "POST" });
+      const data = await res.json();
       if (res.ok) {
-        const data = await res.json();
         if (data.success && data.meeting) {
           setMeetings((prev) => prev.map((m) => (m.id === id ? data.meeting : m)));
         }
+      } else {
+        setAnalyzeError(data.error || "Agent failed — check AWS Bedrock credentials.");
       }
     } catch (err) {
       console.error(err);
+      setAnalyzeError("Agent failed — check AWS Bedrock credentials.");
     } finally {
       setAnalyzingId(null);
     }
@@ -162,6 +171,18 @@ export function MeetingHistory({ initialMeetings }: { initialMeetings: Meeting[]
                   <p className="text-sm text-primary leading-relaxed bg-[#080b10] border border-[#1a2332] rounded p-4">
                     {selectedMeeting.extracted_data.summary}
                   </p>
+                </div>
+              ) : analyzeError ? (
+                <div className="flex flex-col items-center justify-center py-10 text-center">
+                  <AlertTriangle className="w-8 h-8 text-[#ef4444] mb-3" />
+                  <p className="text-sm text-[#ef4444] mb-4">{analyzeError}</p>
+                  <button
+                    onClick={() => handleReprocess(selectedMeeting.id)}
+                    className="bg-[#1a2332] border border-[#1a2332] hover:border-[#0ea5e9]/30 text-primary hover:text-[#0ea5e9] text-xs font-semibold h-8 px-4 rounded flex items-center gap-1.5 transition-all font-mono"
+                  >
+                    <Play className="w-3.5 h-3.5" />
+                    RETRY
+                  </button>
                 </div>
               ) : (
                 <div className="flex flex-col items-center justify-center py-10 text-center">

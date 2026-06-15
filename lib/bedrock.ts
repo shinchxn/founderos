@@ -57,7 +57,7 @@ export async function invokeClaudeSonnet(systemPrompt: string, userPrompt: strin
 
 export async function invokeClaudeHaiku(userPrompt: string, maxTokens: number): Promise<string> {
   const command = new InvokeModelCommand({
-    modelId: "anthropic.claude-haiku-20240307-v1:0",
+    modelId: "anthropic.claude-3-haiku-20240307-v1:0",
     contentType: "application/json",
     accept: "application/json",
     body: JSON.stringify({
@@ -79,7 +79,12 @@ export async function invokeClaudeHaiku(userPrompt: string, maxTokens: number): 
       const parsedStats = JSON.parse(decodedBody);
       return parsedStats.content[0].text;
     } catch (error: any) {
-      throw new Error(`Failed to invoke Bedrock model Claude Haiku: ${error.message}`);
+      console.warn(`Haiku failed, falling back to Sonnet. Error: ${error.message}`);
+      try {
+        return await invokeClaudeSonnet("", userPrompt, maxTokens);
+      } catch (fallbackError: any) {
+        throw new Error(`Failed to invoke Bedrock model Claude Haiku and Sonnet fallback: ${error.message}`);
+      }
     }
   }, { retries: 1, minTimeout: 500 });
 }
