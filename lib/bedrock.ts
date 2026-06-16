@@ -27,7 +27,7 @@ export const bedrockClient = new Proxy({} as BedrockRuntimeClient, {
 
 export async function invokeClaudeSonnet(systemPrompt: string, userPrompt: string, maxTokens: number): Promise<string> {
   const command = new InvokeModelCommand({
-    modelId: "anthropic.claude-sonnet-4-5-20250514-v1:0",
+    modelId: "anthropic.claude-sonnet-4-5-20250929-v1:0",
     contentType: "application/json",
     accept: "application/json",
     body: JSON.stringify({
