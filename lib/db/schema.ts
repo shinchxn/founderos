@@ -86,6 +86,7 @@ export const kpis = pgTable("kpis", {
   runway_months: integer("runway_months").notNull(),
   notes: text("notes"),
   anomalies: json("anomalies"),
+  stripe_synced: boolean("stripe_synced").default(false),
   created_at: timestamp("created_at").defaultNow(),
 });
 
@@ -100,6 +101,8 @@ export const meetings = pgTable("meetings", {
   processed: boolean("processed").default(false),
   processed_at: timestamp("processed_at"),
   extracted_data: json("extracted_data"),
+  source: varchar("source", { length: 50 }).default("manual").notNull(),
+  external_event_id: text("external_event_id").unique(),
   created_at: timestamp("created_at").defaultNow(),
   updated_at: timestamp("updated_at").defaultNow(),
 });
@@ -110,9 +113,10 @@ export const investor_updates = pgTable("investor_updates", {
   week_start: timestamp("week_start").notNull(),
   subject: text("subject").notNull(),
   body: text("body").notNull(),
-  status: varchar("status", { length: 50 }).notNull(), // draft, sent
+  status: varchar("status", { length: 50 }).notNull(), // draft, sent, failed
   sent_at: timestamp("sent_at"),
   sent_to_email: text("sent_to_email"),
+  send_error: text("send_error"),
   agent_generated: boolean("agent_generated").default(false),
   created_at: timestamp("created_at").defaultNow(),
   updated_at: timestamp("updated_at").defaultNow(),
@@ -202,3 +206,21 @@ export const verificationTokens = pgTable(
     }
   ]
 );
+
+export const stripe_webhook_events = pgTable("stripe_webhook_events", {
+  id: text("id").primaryKey(), // Stripe event ID
+  type: text("type").notNull(),
+  processed_at: timestamp("processed_at").defaultNow(),
+});
+
+export const workspace_integrations = pgTable("workspace_integrations", {
+  id: text("id").primaryKey(),
+  workspace_id: text("workspace_id").notNull(),
+  provider: text("provider").notNull(), // 'stripe_connect' | 'google_calendar' | 'gmail'
+  access_token: text("access_token"), // encrypted
+  refresh_token: text("refresh_token"), // encrypted
+  external_account_id: text("external_account_id"),
+  status: text("status").notNull(), // active | error | disconnected
+  connected_at: timestamp("connected_at").defaultNow(),
+  last_synced_at: timestamp("last_synced_at"),
+});

@@ -160,7 +160,12 @@ export default async function KPIsPage() {
               ) : (
                 kpiDataList.map((row) => (
                   <tr key={row.id} className="border-b border-[#1a2332] hover:bg-[#1a2332]/30 transition-colors">
-                    <td className="px-5 py-3 text-muted">{new Date(row.week_start).toLocaleDateString()}</td>
+                    <td className="px-5 py-3 text-muted">
+                      {new Date(row.week_start).toLocaleDateString()}
+                      {row.stripe_synced && (
+                        <span className="ml-2 inline-flex items-center rounded bg-[#8b5cf6]/10 px-1.5 py-0.5 text-[10px] font-medium text-[#8b5cf6] ring-1 ring-inset ring-[#8b5cf6]/20">Stripe</span>
+                      )}
+                    </td>
                     <td className="px-5 py-3">${row.mrr.toLocaleString()}</td>
                     <td className="px-5 py-3">{row.new_signups}</td>
                     <td className="px-5 py-3 text-right text-[#ef4444]">${Math.round(row.mrr * 1.2).toLocaleString()}</td>

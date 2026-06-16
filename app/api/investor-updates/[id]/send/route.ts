@@ -35,8 +35,6 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
     }
 
     const recipient = ws.investor_email || "investors@startup.com";
-    let messageId = "mock_msg_" + Date.now();
-    let sentSuccess = false;
 
     // Check if AWS environment and sender emails are configured
     const isAwsConfigured = 
@@ -44,15 +42,25 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
       process.env.AWS_SECRET_ACCESS_KEY && 
       process.env.AWS_SES_FROM_EMAIL;
 
-    if (isAwsConfigured) {
-      try {
-        messageId = await sendInvestorUpdate(recipient, updateRecord.subject, updateRecord.body);
-        sentSuccess = true;
-      } catch (sesErr: any) {
-        console.warn("SES send failed, falling back to mock send for startup playground flow:", sesErr.message);
-      }
-    } else {
-      console.warn("AWS SES credentials or AWS_SES_FROM_EMAIL are missing. Performing secure mock email broadcast.");
+    if (!isAwsConfigured) {
+      await db.update(investor_updates).set({
+        status: "failed",
+        send_error: "AWS SES credentials or AWS_SES_FROM_EMAIL are missing.",
+        updated_at: new Date(),
+      }).where(eq(investor_updates.id, id));
+      return NextResponse.json({ success: false, error: "AWS SES credentials or AWS_SES_FROM_EMAIL are missing." }, { status: 502 });
+    }
+
+    let messageId;
+    try {
+      messageId = await sendInvestorUpdate(recipient, updateRecord.subject, updateRecord.body);
+    } catch (sesErr: any) {
+      await db.update(investor_updates).set({
+        status: "failed",
+        send_error: sesErr.message,
+        updated_at: new Date(),
+      }).where(eq(investor_updates.id, id));
+      return NextResponse.json({ success: false, error: sesErr.message }, { status: 502 });
     }
 
     // Update the database status to sent
@@ -60,6 +68,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
       status: "sent",
       sent_at: new Date(),
       sent_to_email: recipient,
+      send_error: null,
       updated_at: new Date(),
     }).where(eq(investor_updates.id, id)).returning();
 
@@ -67,7 +76,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
       success: true,
       update: updated,
       messageId,
-      sentViaAws: sentSuccess,
+      sentViaAws: true,
     });
   } catch (error: any) {
     return NextResponse.json({ error: error.message }, { status: 500 });

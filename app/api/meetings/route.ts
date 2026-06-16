@@ -7,6 +7,7 @@ import crypto from "crypto";
 import { processMeeting } from "@/lib/agents/meeting-agent";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
+import { getRatelimit } from "@/lib/ratelimit";
 
 const insertMeetingSchema = createInsertSchema(meetings, {
   meeting_date: z.coerce.date().optional(),
@@ -51,6 +52,12 @@ export async function POST(req: Request) {
 
     if (!ws) {
       return NextResponse.json({ error: "Workspace not found" }, { status: 404 });
+    }
+
+    const ratelimit = getRatelimit(10, "1 h");
+    const { success } = await ratelimit.limit(`meetings_${ws.id}`);
+    if (!success) {
+      return NextResponse.json({ error: "Too many requests. Please try again later." }, { status: 429 });
     }
 
     const rawBody = await req.json();

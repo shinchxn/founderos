@@ -1,7 +1,32 @@
 import { db } from "../db";
-import { kpis, alerts, deals, agent_runs, agent_hours_saved } from "../db/schema";
+import { kpis, alerts, deals, agent_runs, agent_hours_saved, workspaces, users } from "../db/schema";
 import { eq, desc, and, lte, gte } from "drizzle-orm";
 import crypto from "crypto";
+import { SESClient, SendEmailCommand } from "@aws-sdk/client-ses";
+
+const ses = new SESClient({
+  region: process.env.AWS_REGION || "us-east-1",
+  credentials: {
+    accessKeyId: process.env.AWS_ACCESS_KEY_ID || "",
+    secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY || "",
+  },
+});
+
+async function sendAlertEmail(toAddress: string | null | undefined, subject: string, bodyText: string) {
+  if (!toAddress || !process.env.AWS_SES_FROM_EMAIL) return;
+  try {
+    await ses.send(new SendEmailCommand({
+      Source: process.env.AWS_SES_FROM_EMAIL,
+      Destination: { ToAddresses: [toAddress] },
+      Message: {
+        Subject: { Data: `[FounderOS Alert] ${subject}` },
+        Body: { Text: { Data: bodyText } },
+      },
+    }));
+  } catch (err) {
+    console.error("Failed to send alert email:", err);
+  }
+}
 
 export async function processAnomalies(workspaceId: string) {
   const runId = crypto.randomUUID();
@@ -15,6 +40,14 @@ export async function processAnomalies(workspaceId: string) {
 
   const startTime = Date.now();
   let alertsCreated = 0;
+
+  const ws = await db.query.workspaces.findFirst({ where: eq(workspaces.id, workspaceId) });
+  if (!ws) return;
+  let alertEmail = ws.investor_email;
+  if (!alertEmail && ws.owner_id) {
+    const owner = await db.query.users.findFirst({ where: eq(users.id, ws.owner_id) });
+    alertEmail = owner?.email || null;
+  }
 
   try {
     const recentKpis = await db.query.kpis.findMany({
@@ -58,6 +91,7 @@ export async function processAnomalies(workspaceId: string) {
               severity: "high",
             });
             alertsCreated++;
+            await sendAlertEmail(alertEmail, title, `${metric} changed by ${pctChange.toFixed(2)}% from ${prevVal} to ${currVal}.`);
           }
         }
       };
@@ -86,6 +120,7 @@ export async function processAnomalies(workspaceId: string) {
                 severity: "high",
              });
              alertsCreated++;
+             await sendAlertEmail(alertEmail, title, `Runway dropped to ${current.runway_months} months.`);
           }
       }
     }

@@ -237,7 +237,7 @@ Add all environment variables in the Vercel dashboard. Cron jobs register automa
 ## AWS Setup Notes
 
 **Aurora PostgreSQL Serverless v2**
-AWS Console → RDS → Create Database → Aurora PostgreSQL Serverless v2. Enable public access. Security group: allow inbound TCP port 5432. Append `?sslmode=require` to connection string.
+AWS Console → RDS → Create Database → Aurora PostgreSQL Serverless v2. Do not use "public access" unless required. Security group: allow inbound TCP port 5432 from your application's egress IPs. Append `?sslmode=require` to connection string.
 
 **AWS Bedrock**
 AWS Console → Bedrock → Model Access → Request `anthropic.claude-sonnet-4-5` and `anthropic.claude-haiku-20240307`. Approval takes up to 24 hours — request immediately.

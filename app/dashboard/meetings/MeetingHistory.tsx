@@ -14,6 +14,7 @@ interface Meeting {
   processed: boolean | null;
   processed_at: Date | string | null;
   extracted_data: any | null;
+  source?: string;
   created_at?: Date | string | null;
 }
 
@@ -94,6 +95,13 @@ export function MeetingHistory({ initialMeetings }: { initialMeetings: Meeting[]
                       )}
                     </div>
                     <h4 className="text-sm font-semibold truncate text-primary group-hover:text-[#0ea5e9] transition-colors">{m.title}</h4>
+                    <div className="flex items-center gap-2 mt-1 mb-1">
+                      {m.source === 'google_calendar' ? (
+                        <span className="text-[9px] font-bold text-blue-400 bg-blue-400/10 px-1.5 py-0.5 rounded uppercase">Google Calendar</span>
+                      ) : (
+                        <span className="text-[9px] font-bold text-gray-400 bg-gray-400/10 px-1.5 py-0.5 rounded uppercase">Manual</span>
+                      )}
+                    </div>
                     {m.extracted_data?.summary && (
                       <p className="text-xs text-muted truncate mt-1 max-w-[240px]">{m.extracted_data.summary}</p>
                     )}

@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { db } from "../../../../lib/db";
-import { workspaces } from "../../../../lib/db/schema";
+import { workspaces, stripe_webhook_events } from "../../../../lib/db/schema";
 import { eq } from "drizzle-orm";
 import Stripe from "stripe";
 
@@ -28,6 +28,14 @@ export async function POST(req: Request) {
   }
 
   try {
+    const existingEvent = await db.query.stripe_webhook_events.findFirst({
+      where: eq(stripe_webhook_events.id, event.id),
+    });
+
+    if (existingEvent) {
+      return NextResponse.json({ received: true });
+    }
+
     switch (event.type) {
       case "customer.subscription.created":
       case "customer.subscription.updated": {
@@ -55,6 +63,12 @@ export async function POST(req: Request) {
         break;
       }
     }
+
+    await db.insert(stripe_webhook_events).values({
+      id: event.id,
+      type: event.type,
+      processed_at: new Date(),
+    });
 
     return NextResponse.json({ received: true });
   } catch (error: any) {

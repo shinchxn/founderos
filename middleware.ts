@@ -1,8 +1,18 @@
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
+import { getRatelimit } from "@/lib/ratelimit";
 
-export function middleware(req: NextRequest) {
+export async function middleware(req: NextRequest) {
   const { pathname } = req.nextUrl;
+
+  if (pathname.startsWith("/api/auth/signin") || pathname.startsWith("/api/auth/callback")) {
+    const ip = req.headers.get("x-forwarded-for") || "127.0.0.1";
+    const ratelimit = getRatelimit(5, "1 m");
+    const { success } = await ratelimit.limit(`signin_${ip}`);
+    if (!success) {
+      return NextResponse.json({ error: "Too many sign-in attempts. Please try again later." }, { status: 429 });
+    }
+  }
 
   // Check for the presence of the session token cookie
   // This avoids NextAuth Edge JWT parsing crash since we use database sessions!

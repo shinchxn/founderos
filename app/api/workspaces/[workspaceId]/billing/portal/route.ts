@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { auth } from "@/auth";
 import { db } from "../../../../../../lib/db";
 import { workspaces } from "../../../../../../lib/db/schema";
 import { eq } from "drizzle-orm";
@@ -20,6 +21,11 @@ export async function POST(
   { params }: { params: Promise<{ workspaceId: string }> }
 ) {
   try {
+    const authSession = await auth();
+    if (!authSession?.user?.id) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
     const { workspaceId } = await params;
 
     const workspace = await db.query.workspaces.findFirst({
@@ -28,6 +34,10 @@ export async function POST(
 
     if (!workspace) {
       return NextResponse.json({ error: "Workspace not found" }, { status: 404 });
+    }
+
+    if (workspace.owner_id !== authSession.user.id) {
+      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }
 
     if (!workspace.stripe_customer_id) {
