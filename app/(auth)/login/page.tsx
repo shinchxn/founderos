@@ -69,7 +69,7 @@ export default function LoginPage() {
         <span>·</span>
         <span>Built on AWS</span>
         <span>·</span>
-        <span>H0 Hackathon 2025</span>
+        <span>H0 Hackathon 2026</span>
       </div>
     </motion.div>
   );
