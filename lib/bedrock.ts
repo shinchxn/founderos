@@ -1,91 +1,64 @@
-import { BedrockRuntimeClient, InvokeModelCommand } from "@aws-sdk/client-bedrock-runtime";
-import pRetry from "p-retry";
+import { AnthropicBedrock, APIError } from "@anthropic-ai/bedrock-sdk";
 
-let cachedClient: BedrockRuntimeClient | null = null;
+let cachedClient: AnthropicBedrock | null = null;
 
-export function getBedrockClient(): BedrockRuntimeClient {
+function getBedrockClient(): AnthropicBedrock {
   if (!cachedClient) {
     if (!process.env.AWS_ACCESS_KEY_ID || !process.env.AWS_SECRET_ACCESS_KEY) {
       throw new Error("AWS credentials are required for Bedrock");
     }
-    cachedClient = new BedrockRuntimeClient({
-      credentials: {
-        accessKeyId: process.env.AWS_ACCESS_KEY_ID,
-        secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY,
-      },
-      region: process.env.AWS_BEDROCK_REGION || "us-east-1",
+    cachedClient = new AnthropicBedrock({
+      awsAccessKey: process.env.AWS_ACCESS_KEY_ID,
+      awsSecretKey: process.env.AWS_SECRET_ACCESS_KEY,
+      awsRegion: process.env.AWS_BEDROCK_REGION || "us-east-1",
+      maxRetries: 2,
     });
   }
   return cachedClient;
 }
 
-export const bedrockClient = new Proxy({} as BedrockRuntimeClient, {
-  get: (target, prop) => {
-    return getBedrockClient()[prop as keyof BedrockRuntimeClient];
-  }
-});
-
-export async function invokeClaudeSonnet(systemPrompt: string, userPrompt: string, maxTokens: number): Promise<string> {
-  const command = new InvokeModelCommand({
-    modelId: "anthropic.claude-sonnet-4-5-20250929-v1:0",
-
-    contentType: "application/json",
-    accept: "application/json",
-    body: JSON.stringify({
-      anthropic_version: "bedrock-2023-05-31",
+export async function invokeClaudeSonnet(
+  systemPrompt: string,
+  userPrompt: string,
+  maxTokens: number
+): Promise<string> {
+  try {
+    const message = await getBedrockClient().messages.create({
+      model: "anthropic.claude-sonnet-4-5-20250929-v1:0",
       max_tokens: maxTokens,
       system: systemPrompt,
-      messages: [
-        {
-          role: "user",
-          content: [{ type: "text", text: userPrompt }],
-        },
-      ],
-    }),
-  });
-
-  return pRetry(async () => {
-    try {
-      const response = await bedrockClient.send(command);
-      const decodedBody = new TextDecoder().decode(response.body);
-      const parsedStats = JSON.parse(decodedBody);
-      return parsedStats.content[0].text;
-    } catch (error: any) {
-      throw new Error(`Failed to invoke Bedrock model Claude Sonnet: ${error.message}`);
+      messages: [{ role: "user", content: [{ type: "text", text: userPrompt }] }],
+    });
+    const block = message.content[0];
+    return block.type === "text" ? block.text : "";
+  } catch (error) {
+    if (error instanceof APIError) {
+      throw new Error(`Sonnet invoke failed (status ${error.status}): ${error.message}`);
     }
-  }, { retries: 2 });
+    throw error;
+  }
 }
 
-export async function invokeClaudeHaiku(userPrompt: string, maxTokens: number): Promise<string> {
-  const command = new InvokeModelCommand({
-    modelId: "anthropic.claude-3-haiku-20240307-v1:0",
-    contentType: "application/json",
-    accept: "application/json",
-    body: JSON.stringify({
-      anthropic_version: "bedrock-2023-05-31",
+export async function invokeClaudeHaiku(
+  userPrompt: string,
+  maxTokens: number
+): Promise<string> {
+  try {
+    const message = await getBedrockClient().messages.create({
+      model: "anthropic.claude-3-haiku-20240307-v1:0",
       max_tokens: maxTokens,
-      messages: [
-        {
-          role: "user",
-          content: [{ type: "text", text: userPrompt }],
-        },
-      ],
-    }),
-  });
-
-  return pRetry(async () => {
+      messages: [{ role: "user", content: [{ type: "text", text: userPrompt }] }],
+    });
+    const block = message.content[0];
+    return block.type === "text" ? block.text : "";
+  } catch (haikuError) {
+    console.warn(`Haiku failed, falling back to Sonnet: ${(haikuError as Error).message}`);
     try {
-      const response = await bedrockClient.send(command);
-      const decodedBody = new TextDecoder().decode(response.body);
-      const parsedStats = JSON.parse(decodedBody);
-      return parsedStats.content[0].text;
-    } catch (error: any) {
-      console.warn(`Haiku failed, falling back to Sonnet. Error: ${error.message}`);
-      try {
-        return await invokeClaudeSonnet("", userPrompt, maxTokens);
-      } catch (fallbackError: any) {
-        throw new Error(`Failed to invoke Bedrock model Claude Haiku and Sonnet fallback: ${error.message}`);
-      }
+      return await invokeClaudeSonnet("", userPrompt, maxTokens);
+    } catch (sonnetError) {
+      throw new Error(
+        `Both models failed. Haiku: ${(haikuError as Error).message}. Sonnet: ${(sonnetError as Error).message}`
+      );
     }
-  }, { retries: 1, minTimeout: 500 });
+  }
 }

@@ -9,6 +9,7 @@
     "lint": "next lint"
   },
   "dependencies": {
+    "@anthropic-ai/bedrock-sdk": "^0.30.2",
     "@auth/drizzle-adapter": "^1.11.2",
     "@aws-sdk/client-bedrock-runtime": "^3.750.0",
     "@aws-sdk/client-s3": "^3.750.0",
