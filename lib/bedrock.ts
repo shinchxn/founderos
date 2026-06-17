@@ -1,4 +1,5 @@
-import { AnthropicBedrock, APIError } from "@anthropic-ai/bedrock-sdk";
+import AnthropicBedrock from "@anthropic-ai/bedrock-sdk";
+import { APIError } from "@anthropic-ai/sdk";
 
 let cachedClient: AnthropicBedrock | null = null;
 
