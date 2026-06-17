@@ -25,7 +25,7 @@ export async function invokeClaudeSonnet(
 ): Promise<string> {
   try {
     const message = await getBedrockClient().messages.create({
-      model: "anthropic.claude-sonnet-4-5-20250929-v1:0",
+      model: "us.anthropic.claude-sonnet-4-5-20250929-v1:0",
       max_tokens: maxTokens,
       system: systemPrompt,
       messages: [{ role: "user", content: [{ type: "text", text: userPrompt }] }],
@@ -46,7 +46,7 @@ export async function invokeClaudeHaiku(
 ): Promise<string> {
   try {
     const message = await getBedrockClient().messages.create({
-      model: "anthropic.claude-3-haiku-20240307-v1:0",
+      model: "us.anthropic.claude-3-haiku-20240307-v1:0",
       max_tokens: maxTokens,
       messages: [{ role: "user", content: [{ type: "text", text: userPrompt }] }],
     });
